@@ -2,10 +2,15 @@ package port
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/trevatk/layer-2a/internal/adapter"
 	"github.com/trevatk/layer-2a/internal/app"
 	"github.com/trevatk/layer-2a/internal/transform"
 	pb "github.com/trevatk/layer-2a/proto/auth_v1"
@@ -47,6 +52,12 @@ func (as *AuthServer) GetUser(ctx context.Context, in *pb.UserLookup) (*pb.User,
 
 	user, err := as.app.Queries.ReadUserHandler.Handle(ctx, in.Id)
 	if err != nil {
+
+		if errors.Is(err, sql.ErrNoRows) {
+			nf := &adapter.ErrRecordNotFound{ID: in.Id}
+			return nil, status.Errorf(codes.NotFound, nf.Error())
+		}
+
 		as.logger.Error(err)
 		return nil, err
 	}

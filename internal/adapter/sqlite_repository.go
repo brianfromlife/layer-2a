@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"time"
@@ -34,6 +35,32 @@ func NewRepository(database *database.DB, factory *user.Factory) *SQLiteReposito
 	return &SQLiteRepository{db: database, f: factory}
 }
 
+// ErrRecordNotFound
+type ErrRecordNotFound struct {
+	ID int64
+}
+
+// Error
+func (e *ErrRecordNotFound) Error() string {
+	return fmt.Sprintf("record not found for id: %d", e.ID)
+}
+
+// ErrConnClosed
+type ErrConnClosed struct{}
+
+// Error
+func (e *ErrConnClosed) Error() string {
+	return fmt.Sprint("connection closed")
+}
+
+// ErrTxDone
+type ErrTxDone struct{}
+
+// Error
+func (e *ErrTxDone) Error() string {
+	return fmt.Sprint("transaction closed error")
+}
+
 // CreateUser insert and read new user from database
 func (repo *SQLiteRepository) CreateUser(ctx context.Context, u *user.User) (*user.User, error) {
 
@@ -53,16 +80,11 @@ func (repo *SQLiteRepository) CreateUser(ctx context.Context, u *user.User) (*us
 	timeout, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 
-	conn, err := repo.db.Conn(timeout)
+	conn, tx, err := repo.nTx(timeout)
 	if err != nil {
-		return nil, err
+		return nil, repo.handleError(err)
 	}
 	defer conn.Close()
-
-	tx, err := conn.BeginTx(timeout, nil)
-	if err != nil {
-		return nil, fmt.Errorf("conn.BeginTx: %v", err)
-	}
 
 	result, err := tx.ExecContext(timeout, stmt, sqlUser.Name, sqlUser.Email, sqlUser.Email, sqlUser.Phone, sqlUser.CountryCode)
 	if err != nil {
@@ -73,6 +95,11 @@ func (repo *SQLiteRepository) CreateUser(ctx context.Context, u *user.User) (*us
 	liid, err := result.LastInsertId()
 	if err != nil {
 		tx.Rollback()
+
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, sql.ErrNoRows
+		}
+
 		return nil, fmt.Errorf("result.LastInsertId: %v", err)
 	}
 
@@ -126,16 +153,11 @@ func (repo *SQLiteRepository) ReadUser(ctx context.Context, ID int64) (*user.Use
 	timeout, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 
-	conn, err := repo.db.Conn(timeout)
+	conn, tx, err := repo.nTx(timeout)
 	if err != nil {
-		return nil, err
+		return nil, repo.handleError(err)
 	}
 	defer conn.Close()
-
-	tx, err := conn.BeginTx(timeout, nil)
-	if err != nil {
-		return nil, fmt.Errorf("conn.BeginTx: %v", err)
-	}
 
 	var u sqlUser
 	row := tx.QueryRowContext(timeout, stmt, ID)
@@ -176,16 +198,11 @@ func (repo *SQLiteRepository) ReadAllUsers(ctx context.Context) ([]*user.User, e
 	timeout, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 
-	conn, err := repo.db.Conn(timeout)
+	conn, tx, err := repo.nTx(timeout)
 	if err != nil {
-		return nil, err
+		return nil, repo.handleError(err)
 	}
 	defer conn.Close()
-
-	tx, err := conn.BeginTx(timeout, nil)
-	if err != nil {
-		return nil, fmt.Errorf("conn.BeginTx: %v", err)
-	}
 
 	rows, err := tx.QueryContext(timeout, stmt)
 	if err != nil {
@@ -247,16 +264,11 @@ func (repo *SQLiteRepository) UpdateUser(ctx context.Context, u *user.User) (*us
 	timeout, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 
-	conn, err := repo.db.Conn(timeout)
+	conn, tx, err := repo.nTx(timeout)
 	if err != nil {
-		return nil, err
+		return nil, repo.handleError(err)
 	}
 	defer conn.Close()
-
-	tx, err := conn.BeginTx(timeout, nil)
-	if err != nil {
-		return nil, fmt.Errorf("conn.BeginTx: %v", err)
-	}
 
 	result, err := tx.ExecContext(timeout, stmt, u.Name, u.Email, u.CountryCode, u.Phone, u.ID)
 	if err != nil {
@@ -328,16 +340,11 @@ func (repo *SQLiteRepository) DeleteUser(ctx context.Context, ID int64) error {
 	timeout, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 
-	conn, err := repo.db.Conn(timeout)
+	conn, tx, err := repo.nTx(timeout)
 	if err != nil {
-		return err
+		return repo.handleError(err)
 	}
 	defer conn.Close()
-
-	tx, err := conn.BeginTx(timeout, nil)
-	if err != nil {
-		return fmt.Errorf("conn.BeginTx: %v", err)
-	}
 
 	result, err := tx.ExecContext(timeout, stmt, ID)
 	if err != nil {
@@ -362,4 +369,32 @@ func (repo *SQLiteRepository) DeleteUser(ctx context.Context, ID int64) error {
 	}
 
 	return nil
+}
+
+func (repo *SQLiteRepository) nTx(ctx context.Context) (*sql.Conn, *sql.Tx, error) {
+
+	conn, err := repo.db.Conn(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	tx, err := conn.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return conn, tx, nil
+}
+
+func (repo *SQLiteRepository) handleError(err error) error {
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return &ErrRecordNotFound{}
+	} else if errors.Is(err, sql.ErrConnDone) {
+		return &ErrConnClosed{}
+	} else if errors.Is(err, sql.ErrTxDone) {
+		return &ErrTxDone{}
+	}
+
+	return err
 }
