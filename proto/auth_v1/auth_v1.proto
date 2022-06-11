@@ -1,0 +1,46 @@
+
+syntax = "proto3";
+
+package auth_v1;
+
+option go_package = "github.com/trevatk/layer-2a/proto/auth_v1";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+message NewUser {
+    string name = 1;
+    string email = 2;
+    string country_code = 3;
+    string phone = 4;
+
+    google.protobuf.Timestamp timestamp = 5;
+}
+
+message User {
+    int64 id = 1;
+    string name = 2;
+    string email = 3;
+    string country_code = 4;
+    string phone = 5;
+
+    google.protobuf.Timestamp timestamp = 6;
+}
+
+message Users {
+    repeated User user = 1;
+}
+
+message UserLookup {
+    int64 id = 1;
+
+    google.protobuf.Timestamp timestamp = 2;
+}
+
+service Auth_V1 {
+    rpc CreateUser (NewUser) returns (User) {}
+    rpc GetUser (UserLookup) returns (User) {}
+    rpc GetAllUsers (google.protobuf.Empty) returns (Users) {}
+    rpc UpdateUser (User) returns (User) {}
+    rpc DeleteUser (UserLookup) returns (google.protobuf.Empty) {}
+}

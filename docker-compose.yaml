@@ -1,0 +1,19 @@
+version: '3.5'
+services:
+  auth:
+    container_name: auth
+    image: auth:latest
+    env_file:
+      - ./deployments/desktop/database.env
+      - ./deployments/desktop/server.env
+    ports:
+      - '50051:50051'
+    volumes:
+      - ./sqlite3/auth.db:/sqlite3/auth.db:rw
+    networks:
+      - frontend
+
+networks:
+  frontend:
+    driver: bridge
+    
