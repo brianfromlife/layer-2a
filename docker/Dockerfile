@@ -13,7 +13,7 @@ COPY . ./
 
 RUN go build -o /auth ./cmd/auth
 
-EXPOSE 50051
+EXPOSE 50055
 
 VOLUME [ "/sqlite3" ]
 

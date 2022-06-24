@@ -14,6 +14,7 @@ import (
 // sqlUser
 type sqlUser struct {
 	ID          int64  `db:"id"`
+	Password    string `db:"password"`
 	Name        string `db:"name"`
 	Email       string `db:"email"`
 	Phone       string `db:"phone"`
@@ -21,7 +22,7 @@ type sqlUser struct {
 	CreatedAt   string `db:"created_at"`
 }
 
-// SQLiteRepository
+// SQLiteRepository ...
 type SQLiteRepository struct {
 	db *database.DB
 	f  *user.Factory
@@ -30,35 +31,9 @@ type SQLiteRepository struct {
 // compile time interface verification
 var _ user.IRepository = (*SQLiteRepository)(nil)
 
-// NewRepository
+// NewRepository create new instance
 func NewRepository(database *database.DB, factory *user.Factory) *SQLiteRepository {
 	return &SQLiteRepository{db: database, f: factory}
-}
-
-// ErrRecordNotFound
-type ErrRecordNotFound struct {
-	ID int64
-}
-
-// Error
-func (e *ErrRecordNotFound) Error() string {
-	return fmt.Sprintf("record not found for id: %d", e.ID)
-}
-
-// ErrConnClosed
-type ErrConnClosed struct{}
-
-// Error
-func (e *ErrConnClosed) Error() string {
-	return fmt.Sprint("connection closed")
-}
-
-// ErrTxDone
-type ErrTxDone struct{}
-
-// Error
-func (e *ErrTxDone) Error() string {
-	return fmt.Sprint("transaction closed error")
 }
 
 // CreateUser insert and read new user from database
@@ -82,7 +57,7 @@ func (repo *SQLiteRepository) CreateUser(ctx context.Context, u *user.User) (*us
 
 	conn, tx, err := repo.nTx(timeout)
 	if err != nil {
-		return nil, repo.handleError(err)
+		return nil, err
 	}
 	defer conn.Close()
 
@@ -155,7 +130,7 @@ func (repo *SQLiteRepository) ReadUser(ctx context.Context, ID int64) (*user.Use
 
 	conn, tx, err := repo.nTx(timeout)
 	if err != nil {
-		return nil, repo.handleError(err)
+		return nil, err
 	}
 	defer conn.Close()
 
@@ -200,7 +175,7 @@ func (repo *SQLiteRepository) ReadAllUsers(ctx context.Context) ([]*user.User, e
 
 	conn, tx, err := repo.nTx(timeout)
 	if err != nil {
-		return nil, repo.handleError(err)
+		return nil, err
 	}
 	defer conn.Close()
 
@@ -266,7 +241,7 @@ func (repo *SQLiteRepository) UpdateUser(ctx context.Context, u *user.User) (*us
 
 	conn, tx, err := repo.nTx(timeout)
 	if err != nil {
-		return nil, repo.handleError(err)
+		return nil, err
 	}
 	defer conn.Close()
 
@@ -342,7 +317,7 @@ func (repo *SQLiteRepository) DeleteUser(ctx context.Context, ID int64) error {
 
 	conn, tx, err := repo.nTx(timeout)
 	if err != nil {
-		return repo.handleError(err)
+		return err
 	}
 	defer conn.Close()
 
@@ -384,17 +359,4 @@ func (repo *SQLiteRepository) nTx(ctx context.Context) (*sql.Conn, *sql.Tx, erro
 	}
 
 	return conn, tx, nil
-}
-
-func (repo *SQLiteRepository) handleError(err error) error {
-
-	if errors.Is(err, sql.ErrNoRows) {
-		return &ErrRecordNotFound{}
-	} else if errors.Is(err, sql.ErrConnDone) {
-		return &ErrConnClosed{}
-	} else if errors.Is(err, sql.ErrTxDone) {
-		return &ErrTxDone{}
-	}
-
-	return err
 }

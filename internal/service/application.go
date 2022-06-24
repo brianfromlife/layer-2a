@@ -13,7 +13,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// ProvideApplication
+// ProvideApplication initialize all services to fulfill all interfaces
 func ProvideApplication(lc fx.Lifecycle, log *zap.Logger, cfg *setup.Config) (*app.Application, error) {
 
 	db, err := cfg.Database.ProvideDatabase(log)

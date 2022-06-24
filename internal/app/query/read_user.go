@@ -6,17 +6,17 @@ import (
 	"github.com/trevatk/layer-2a/internal/domain/user"
 )
 
-// ReadUserHandler
+// ReadUserHandler class for all required interfaces to read user
 type ReadUserHandler struct {
 	repo user.IRepository
 }
 
-// NewReadUserHandler
+// NewReadUserHandler create new instance
 func NewReadUserHandler(repository user.IRepository) *ReadUserHandler {
 	return &ReadUserHandler{repo: repository}
 }
 
-// Handle
+// Handle read user logic
 func (h *ReadUserHandler) Handle(ctx context.Context, ID int64) (*user.User, error) {
 
 	user, err := h.repo.ReadUser(ctx, ID)

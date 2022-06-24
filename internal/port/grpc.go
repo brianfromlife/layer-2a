@@ -10,7 +10,7 @@ import (
 	pb "github.com/trevatk/layer-2a/proto/auth_v1"
 )
 
-// InvokeServer
+// InvokeServer config and start grpc server
 func InvokeServer(lc fx.Lifecycle, log *zap.Logger, cfg *setup.Config, as *AuthServer) error {
 
 	s, err := cfg.Server.ProvideGrpcServer()

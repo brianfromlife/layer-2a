@@ -5,13 +5,13 @@ import (
 	"github.com/trevatk/common/server"
 )
 
-// Config
+// Config environmental variables placeholder
 type Config struct {
 	Database database.Config
 	Server   server.Config
 }
 
-// ProvideConfig
+// ProvideConfig create new config object
 func ProvideConfig() *Config {
 	return &Config{}
 }

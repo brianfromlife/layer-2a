@@ -6,17 +6,17 @@ import (
 	"github.com/trevatk/layer-2a/internal/domain/user"
 )
 
-// UpdateUserHandler
+// UpdateUserHandler class for all required interfaces to update user
 type UpdateUserHandler struct {
 	repo user.IRepository
 }
 
-// NewCreateUserHandler
+// NewUpdateUserHandler create new instance
 func NewUpdateUserHandler(repository user.IRepository) *UpdateUserHandler {
 	return &UpdateUserHandler{repo: repository}
 }
 
-// Handle
+// Handle update user logic
 func (h *UpdateUserHandler) Handle(ctx context.Context, u *user.User) (*user.User, error) {
 
 	user, err := h.repo.UpdateUser(ctx, u)

@@ -2,28 +2,23 @@ package port
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 
 	"go.uber.org/zap"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"github.com/trevatk/layer-2a/internal/adapter"
 	"github.com/trevatk/layer-2a/internal/app"
 	"github.com/trevatk/layer-2a/internal/transform"
 	pb "github.com/trevatk/layer-2a/proto/auth_v1"
 )
 
-// AuthServer ...
+// AuthServer implementation of grpc auth interface
 type AuthServer struct {
 	pb.UnimplementedAuth_V1Server
 	app    *app.Application
 	logger *zap.SugaredLogger
 }
 
-// ProvideAuthServer
+// ProvideAuthServer configures and returns a new auth server
 func ProvideAuthServer(log *zap.Logger, application *app.Application) *AuthServer {
 
 	logger := log.Named("auth server").Sugar()
@@ -31,7 +26,7 @@ func ProvideAuthServer(log *zap.Logger, application *app.Application) *AuthServe
 	return &AuthServer{app: application, logger: logger}
 }
 
-// CreateUser
+// CreateUser transform and create new user
 func (as *AuthServer) CreateUser(ctx context.Context, in *pb.NewUser) (*pb.User, error) {
 
 	as.logger.Debug("create user handler")
@@ -45,19 +40,13 @@ func (as *AuthServer) CreateUser(ctx context.Context, in *pb.NewUser) (*pb.User,
 	return transform.User(user), nil
 }
 
-// GetUser
+// GetUser retrieve an individual user
 func (as *AuthServer) GetUser(ctx context.Context, in *pb.UserLookup) (*pb.User, error) {
 
 	as.logger.Debug("get user handler")
 
 	user, err := as.app.Queries.ReadUserHandler.Handle(ctx, in.Id)
 	if err != nil {
-
-		if errors.Is(err, sql.ErrNoRows) {
-			nf := &adapter.ErrRecordNotFound{ID: in.Id}
-			return nil, status.Errorf(codes.NotFound, nf.Error())
-		}
-
 		as.logger.Error(err)
 		return nil, err
 	}
@@ -65,7 +54,7 @@ func (as *AuthServer) GetUser(ctx context.Context, in *pb.UserLookup) (*pb.User,
 	return transform.User(user), nil
 }
 
-// GetAllUsers
+// GetAllUsers retrieve all users
 func (as *AuthServer) GetAllUsers(ctx context.Context, empty *emptypb.Empty) (*pb.Users, error) {
 
 	users, err := as.app.Queries.ReadAllUsersHandler.Handle(ctx)
@@ -76,7 +65,7 @@ func (as *AuthServer) GetAllUsers(ctx context.Context, empty *emptypb.Empty) (*p
 	return transform.Users(users), nil
 }
 
-// UpdateUser
+// UpdateUser transform and pass object to handler
 func (as *AuthServer) UpdateUser(ctx context.Context, in *pb.User) (*pb.User, error) {
 
 	as.logger.Debug("update user handler")
@@ -90,7 +79,7 @@ func (as *AuthServer) UpdateUser(ctx context.Context, in *pb.User) (*pb.User, er
 	return transform.User(user), nil
 }
 
-// DeleteUser
+// DeleteUser call to delete user handler
 func (as *AuthServer) DeleteUser(ctx context.Context, in *pb.UserLookup) (*emptypb.Empty, error) {
 
 	as.logger.Debug("delete user handler")

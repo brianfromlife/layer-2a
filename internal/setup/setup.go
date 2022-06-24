@@ -6,7 +6,7 @@ import (
 	envconfig "github.com/sethvargo/go-envconfig"
 )
 
-// InvokeConfig
+// InvokeConfig process all environmental variables
 func InvokeConfig(config *Config) error {
 	return envconfig.ProcessWith(context.Background(), config, envconfig.OsLookuper())
 }
