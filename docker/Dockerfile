@@ -11,7 +11,7 @@ RUN go mod download
 
 COPY . ./
 
-RUN go build -o /auth ./cmd/auth
+RUN go build -o /auth ./cmd/l2a
 
 EXPOSE 50055
 
